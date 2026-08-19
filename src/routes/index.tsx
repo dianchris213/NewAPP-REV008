@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { AppShell, TopBar } from "@/components/AppShell";
 import { FullScreenModal } from "@/components/FullScreenModal";
 import { EmptyState } from "@/components/EmptyState";
