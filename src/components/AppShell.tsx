@@ -1,5 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import { Icon } from "./Icon";
 import { FullScreenModal } from "./FullScreenModal";
 import { AddTransactionSheet } from "./AddTransactionSheet";
@@ -45,6 +46,27 @@ export function TopBar({
   const [nameDraft, setNameDraft] = useState("");
   const [avatarDraft, setAvatarDraft] = useState("");
   const [avatarError, setAvatarError] = useState<string | undefined>(undefined);
+  const notifRef = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLButtonElement>(null);
+
+  // Notification popover closes on any outside click/tap or Escape.
+  useEffect(() => {
+    if (!notifOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (notifRef.current?.contains(target) || bellRef.current?.contains(target)) return;
+      setNotifOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setNotifOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("keydown", onKey, true);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("keydown", onKey, true);
+    };
+  }, [notifOpen]);
 
   // Local gallery pick -> data URL preview. Nothing leaves the device.
   const onPickAvatar = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,8 +112,11 @@ export function TopBar({
   const submitProfile = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      updateProfile({ name: nameDraft, avatar: avatarDraft });
+      updateProfile({ name: nameDraft.trim(), avatar: avatarDraft });
       setEditOpen(false);
+      toast.success("Profil diperbarui", {
+        description: avatarDraft ? "Nama dan foto profil tersimpan." : "Nama profil tersimpan.",
+      });
     },
     [nameDraft, avatarDraft, updateProfile],
   );
@@ -129,6 +154,7 @@ export function TopBar({
             </button>
             <button
               type="button"
+              ref={bellRef}
               data-testid="notification-bell"
               aria-label={
                 unreadCount ? `Notifikasi, ${unreadCount} belum dibaca` : "Notifikasi"
@@ -150,6 +176,7 @@ export function TopBar({
 
       {notifOpen ? (
         <div
+          ref={notifRef}
           data-testid="notification-panel"
           role="dialog"
           aria-label="Notifikasi"

@@ -300,13 +300,25 @@ export function AllTransactionsSheet({
         </div>
       </div>
 
-      <div className="no-scrollbar swipe-x flex gap-2 px-margin-main pb-3" role="group" aria-label="Urutkan transaksi">
+      <div
+        className="no-scrollbar swipe-x flex gap-2 px-margin-main pb-3"
+        role="radiogroup"
+        aria-label="Urutkan transaksi"
+      >
         {SORT_OPTIONS.map((o) => (
           <button
             key={o.value}
             type="button"
-            aria-pressed={sort === o.value}
+            role="radio"
+            aria-checked={sort === o.value}
+            tabIndex={sort === o.value ? 0 : -1}
             data-testid={`tx-sort-${o.value}`}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+                e.preventDefault();
+                setSort(o.value);
+              }
+            }}
             onClick={() => setSort(o.value)}
             className={`h-10 shrink-0 rounded-full border px-4 text-[12px] font-semibold transition-colors ${
               sort === o.value
@@ -319,9 +331,13 @@ export function AllTransactionsSheet({
         ))}
       </div>
 
+      <p aria-live="polite" role="status" className="sr-only">
+        {`Diurutkan ${SORT_OPTIONS.find((o) => o.value === sort)?.label ?? ""}, ${sorted.length} transaksi ditampilkan.`}
+      </p>
+
       <div className="no-scrollbar flex-1 overflow-y-auto px-margin-main pb-10">
         {sorted.length ? (
-          <TransactionList items={sorted} />
+          <TransactionList items={sorted} actions />
         ) : (
           <EmptyState icon="receipt" title="Tidak ada transaksi" />
         )}
