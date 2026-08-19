@@ -1,5 +1,7 @@
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useState } from "react";
+import { toast } from "sonner";
 import { Icon } from "./Icon";
+import { useModalA11y } from "@/hooks/use-modal-a11y";
 import { formatIDR, useApp, type Transaction } from "@/lib/app-store";
 
 const NOTE_MAX = 80;
@@ -63,9 +65,9 @@ const TransactionRow = memo(function TransactionRow({
             aria-label={`Ubah transaksi ${t.category} ${formatIDR(t.amount)}`}
             disabled={!!t.pending}
             onClick={() => onEdit(t)}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-variant/60 focus-visible:ring-2 focus-visible:ring-primary/60 disabled:opacity-40"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-variant/50 text-on-surface-variant transition-colors hover:bg-primary-container/40 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/60 disabled:opacity-40"
           >
-            <Icon name="edit" className="text-[18px]" />
+            <Icon name="edit_square" className="text-[17px]" />
           </button>
           <button
             type="button"
@@ -73,9 +75,9 @@ const TransactionRow = memo(function TransactionRow({
             aria-label={`Hapus transaksi ${t.category} ${formatIDR(t.amount)}`}
             disabled={!!t.pending}
             onClick={() => onDelete(t)}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-error transition-colors hover:bg-error/10 focus-visible:ring-2 focus-visible:ring-error/60 disabled:opacity-40"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-error/10 text-error transition-colors hover:bg-error/20 focus-visible:ring-2 focus-visible:ring-error/60 disabled:opacity-40"
           >
-            <Icon name="delete" className="text-[18px]" />
+            <Icon name="delete_outline" className="text-[17px]" />
           </button>
         </span>
       ) : null}
@@ -90,9 +92,10 @@ const TransactionRow = memo(function TransactionRow({
  */
 export const TransactionList = memo(function TransactionList({
   items,
-  actions = true,
+  actions = false,
 }: {
   items: Transaction[];
+  /** Edit/delete controls are opt-in: only the full transaction overlay uses them. */
   actions?: boolean;
 }) {
   const { updateTransaction, deleteTransaction } = useApp();
@@ -111,8 +114,17 @@ export const TransactionList = memo(function TransactionList({
 
   const confirm = useCallback(() => {
     if (!pending) return;
-    if (pending.kind === "delete") deleteTransaction(pending.tx.id);
-    else updateTransaction(pending.tx.id, pending.patch);
+    if (pending.kind === "delete") {
+      deleteTransaction(pending.tx.id);
+      toast.success("Transaksi dihapus", {
+        description: `${pending.tx.category} · ${formatIDR(pending.tx.amount)}`,
+      });
+    } else {
+      updateTransaction(pending.tx.id, pending.patch);
+      toast.success("Perubahan tersimpan", {
+        description: `${pending.patch.category} · ${formatIDR(pending.patch.amount)}`,
+      });
+    }
     setPending(null);
     setEditing(null);
   }, [pending, deleteTransaction, updateTransaction]);
@@ -157,27 +169,6 @@ export const TransactionList = memo(function TransactionList({
   );
 });
 
-function useDialogA11y(onClose: () => void) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    const previous = document.activeElement as HTMLElement | null;
-    el?.querySelector<HTMLElement>("button, input, select, textarea")?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        onClose();
-      }
-    };
-    document.addEventListener("keydown", onKey, true);
-    return () => {
-      document.removeEventListener("keydown", onKey, true);
-      previous?.focus?.();
-    };
-  }, [onClose]);
-  return ref;
-}
-
 function ConfirmDialog({
   title,
   description,
@@ -193,7 +184,7 @@ function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  const ref = useDialogA11y(onCancel);
+  const ref = useModalA11y<HTMLDivElement>(true, onCancel);
   return (
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 px-6 backdrop-blur-sm"
@@ -244,7 +235,7 @@ function EditDialog({
   onRequestConfirm: (patch: { amount: number; category: string; note: string }) => void;
   onCancel: () => void;
 }) {
-  const ref = useDialogA11y(onCancel);
+  const ref = useModalA11y<HTMLDivElement>(true, onCancel);
   const [amount, setAmount] = useState(String(tx.amount));
   const [category, setCategory] = useState(tx.category);
   const [note, setNote] = useState(tx.note ?? "");
