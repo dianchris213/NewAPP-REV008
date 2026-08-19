@@ -204,6 +204,7 @@ function ConfirmDialog({
         <div className="mt-5 flex gap-2">
           <button
             type="button"
+            autoFocus
             data-testid="tx-confirm-cancel"
             onClick={onCancel}
             className="h-11 flex-1 rounded-full bg-surface-variant text-[13px] font-semibold text-on-surface-variant transition-transform active:scale-95"
@@ -275,6 +276,7 @@ function EditDialog({
             <span className="text-meta text-on-surface-variant/80">Nominal</span>
             <input
               inputMode="numeric"
+              autoFocus
               data-testid="tx-edit-amount"
               aria-invalid={!!error}
               value={(Number(amount.replace(/\D/g, "")) || 0).toLocaleString("id-ID")}
