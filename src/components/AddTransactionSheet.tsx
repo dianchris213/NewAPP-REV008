@@ -246,7 +246,7 @@ export function AddTransactionSheet() {
   );
 }
 
-function InlineError({ id, message }: { id: string; message?: string }) {
+function InlineError({ id, message }: { id: string; message?: string | undefined }) {
   if (!message) return null;
   return (
     <p id={id} role="alert" className="mt-1 text-[11px] font-semibold text-error">
