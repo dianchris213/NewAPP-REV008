@@ -5,6 +5,15 @@ import { TransactionList } from "./TransactionList";
 import { EmptyState } from "./EmptyState";
 import { useApp, type Transaction } from "@/lib/app-store";
 
+type SortKey = "date-desc" | "date-asc" | "amount-desc" | "amount-asc";
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "date-desc", label: "Terbaru" },
+  { value: "date-asc", label: "Terlama" },
+  { value: "amount-desc", label: "Nominal Tertinggi" },
+  { value: "amount-asc", label: "Nominal Terendah" },
+];
+
 const WEEK_OPTIONS = [
   { value: "all", label: "Semua Minggu" },
   { value: "this", label: "Minggu Ini" },
@@ -59,6 +68,7 @@ export function AllTransactionsSheet({
     keyword.trim() !== "";
 
   const [showFilters, setShowFilters] = useState(false);
+  const [sort, setSort] = useState<SortKey>("date-desc");
   const closingRef = useRef(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -141,6 +151,30 @@ export function AllTransactionsSheet({
     [items, month, week, type, category, keyword],
   );
 
+  // Sorting is derived from the already-filtered list, so search + sort stay
+  // in sync and update instantly on every keystroke or option change.
+  const sorted = useMemo(() => {
+    const copy = [...filtered];
+    copy.sort((a, b) => {
+      switch (sort) {
+        case "date-asc":
+          return new Date(a.date).getTime() - new Date(b.date).getTime();
+        case "amount-desc":
+          return b.amount - a.amount;
+        case "amount-asc":
+          return a.amount - b.amount;
+        default:
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+      }
+    });
+    return copy;
+  }, [filtered, sort]);
+
+  // Reset sorting when the sheet closes so no phantom state survives.
+  useEffect(() => {
+    if (!open) setSort("date-desc");
+  }, [open]);
+
   if (!open || typeof document === "undefined") return null;
 
   return createPortal(
@@ -153,7 +187,7 @@ export function AllTransactionsSheet({
       <div className="flex items-center justify-between border-b border-outline-variant/15 px-margin-main pt-safe-area-top pb-3">
         <div className="flex flex-col">
           <h2 className="text-title text-on-surface">Semua Transaksi</h2>
-          <span className="text-meta text-on-surface-variant/80">{filtered.length} entri</span>
+          <span className="text-meta text-on-surface-variant/80">{sorted.length} entri</span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <button
@@ -266,9 +300,28 @@ export function AllTransactionsSheet({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-margin-main pb-10">
-        {filtered.length ? (
-          <TransactionList items={filtered} />
+      <div className="no-scrollbar swipe-x flex gap-2 px-margin-main pb-3" role="group" aria-label="Urutkan transaksi">
+        {SORT_OPTIONS.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            aria-pressed={sort === o.value}
+            data-testid={`tx-sort-${o.value}`}
+            onClick={() => setSort(o.value)}
+            className={`h-10 shrink-0 rounded-full border px-4 text-[12px] font-semibold transition-colors ${
+              sort === o.value
+                ? "border-primary bg-primary-container/25 text-primary"
+                : "border-outline-variant/30 text-on-surface-variant"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="no-scrollbar flex-1 overflow-y-auto px-margin-main pb-10">
+        {sorted.length ? (
+          <TransactionList items={sorted} />
         ) : (
           <EmptyState icon="receipt" title="Tidak ada transaksi" />
         )}
