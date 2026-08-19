@@ -44,6 +44,28 @@ export function TopBar({
   const [notifOpen, setNotifOpen] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [avatarDraft, setAvatarDraft] = useState("");
+  const [avatarError, setAvatarError] = useState<string | undefined>(undefined);
+
+  // Local gallery pick -> data URL preview. Nothing leaves the device.
+  const onPickAvatar = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setAvatarError("File harus berupa gambar.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setAvatarError("Ukuran gambar maksimal 2 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAvatarError(undefined);
+      setAvatarDraft(typeof reader.result === "string" ? reader.result : "");
+    };
+    reader.onerror = () => setAvatarError("Gagal membaca gambar.");
+    reader.readAsDataURL(file);
+  }, []);
 
   // Telegram values win when present, otherwise fall back to mock/store data.
   const displayName = user?.name ?? tg?.name ?? "Pengguna";
@@ -53,6 +75,7 @@ export function TopBar({
   const openEdit = useCallback(() => {
     setNameDraft(displayName);
     setAvatarDraft(displayAvatar ?? "");
+    setAvatarError(undefined);
     setNotifOpen(false);
     setEditOpen(true);
   }, [displayName, displayAvatar]);
@@ -171,16 +194,43 @@ export function TopBar({
               className="h-12 rounded-2xl border border-outline-variant/30 bg-surface-container-high px-4 text-[14px] text-on-surface outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
             />
           </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-meta text-on-surface-variant/80">URL Avatar</span>
-            <input
-              data-testid="profile-avatar-input"
-              value={avatarDraft}
-              onChange={(e) => setAvatarDraft(e.target.value)}
-              placeholder="https://..."
-              className="h-12 rounded-2xl border border-outline-variant/30 bg-surface-container-high px-4 text-[14px] text-on-surface outline-none placeholder:text-on-surface-variant/60 focus-visible:ring-2 focus-visible:ring-primary/60"
-            />
-          </label>
+          <div className="flex flex-col gap-2">
+            <span className="text-meta text-on-surface-variant/80">Foto Profil</span>
+            <div className="flex items-center gap-3">
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-outline-variant/30 bg-surface-container-high text-on-surface-variant">
+                {avatarDraft ? (
+                  <img src={avatarDraft} alt="Pratinjau foto profil" className="h-full w-full object-cover" />
+                ) : (
+                  <Icon name="person" className="text-[24px]" />
+                )}
+              </span>
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <label
+                  htmlFor="profile-avatar-file"
+                  className="text-[12px] font-semibold text-primary"
+                >
+                  Pilih dari galeri
+                </label>
+                <input
+                  id="profile-avatar-file"
+                  type="file"
+                  accept="image/*"
+                  data-testid="profile-avatar-input"
+                  onChange={onPickAvatar}
+                  className="text-[12px] text-on-surface-variant file:mr-3 file:rounded-full file:border-0 file:bg-surface-variant file:px-3 file:py-2 file:text-[12px] file:font-semibold file:text-on-surface-variant"
+                />
+                {avatarError ? (
+                  <p role="alert" className="m-0 text-[11px] font-semibold text-error">
+                    {avatarError}
+                  </p>
+                ) : (
+                  <p className="m-0 text-[11px] text-on-surface-variant/70">
+                    Format gambar, maksimal 2 MB.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
           <button
             type="submit"
             data-testid="profile-save-button"

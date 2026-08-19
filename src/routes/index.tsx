@@ -329,24 +329,39 @@ const PocketCard = memo(function PocketCard({
   amount: number;
   onOpen: (name: string) => void;
 }) {
+  const startRef = useRef<{ x: number; y: number } | null>(null);
   return (
     <div
       role="listitem"
-      className="glass-card relative min-w-[150px] shrink-0 rounded-[18px] p-4 text-center"
+      className="glass-card relative flex min-w-[150px] shrink-0 flex-col items-center rounded-[18px] p-4 text-center"
     >
+      {/* Only the wallet icon itself is the trigger, and a pointer that moved
+          (horizontal swipe) never counts as a press. */}
       <button
         type="button"
-        onClick={() => onOpen(name)}
+        data-testid={`pocket-trigger-${name}`}
+        onPointerDown={(e) => {
+          startRef.current = { x: e.clientX, y: e.clientY };
+        }}
+        onClick={(e) => {
+          const start = startRef.current;
+          startRef.current = null;
+          if (
+            start &&
+            (Math.abs(e.clientX - start.x) > 8 || Math.abs(e.clientY - start.y) > 8)
+          ) {
+            return;
+          }
+          onOpen(name);
+        }}
         aria-haspopup="dialog"
         aria-label={`Kantong ${name}, saldo ${formatIDR(amount)}`}
-        className="flex w-full flex-col items-center gap-1 transition-transform active:scale-[0.98]"
+        className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-variant text-primary transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-primary/60"
       >
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-variant text-primary">
-          <Icon name={icon} className="text-[18px]" />
-        </span>
-        <p className="mt-2 text-meta text-on-surface-variant">{name}</p>
-        <p className="text-body font-semibold text-on-surface">{formatIDR(amount)}</p>
+        <Icon name={icon} className="text-[18px]" />
       </button>
+      <p className="mt-2 text-meta text-on-surface-variant">{name}</p>
+      <p className="text-body font-semibold text-on-surface">{formatIDR(amount)}</p>
     </div>
   );
 });
